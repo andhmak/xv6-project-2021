@@ -65,7 +65,10 @@ usertrap(void)
     intr_on();
 
     syscall();
-  } else if((which_dev = devintr()) != 0){
+  } /*else if (r_scause() == 15){
+    // cow fault handler, check if page is user, valid, read only, cow, then call kalloc, copy old page to new page,
+    // in the end decrease the reference count by 1
+  }*/ else if((which_dev = devintr()) != 0){
     // ok
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
