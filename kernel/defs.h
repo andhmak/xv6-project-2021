@@ -184,3 +184,14 @@ void            virtio_disk_intr(void);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+
+
+// new code
+
+#include "spinlock.h"
+#include "memlayout.h"
+// struct holding reference count per page
+struct ref_arr_type {
+  struct spinlock lock;
+  int reference_count[PHYSTOP/PGSIZE];
+};

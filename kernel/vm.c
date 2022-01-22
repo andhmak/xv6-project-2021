@@ -291,6 +291,9 @@ uvmfree(pagetable_t pagetable, uint64 sz)
   freewalk(pagetable);
 }
 
+// to use the reference array
+extern struct ref_arr_type ref_arr;
+
 // Given a parent process's page table, copy
 // its memory into a child's page table.
 // Copies both the page table and the
@@ -313,6 +316,14 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
 
+    if (flags & PTE_W) {
+      *pte |= PTE_COW;
+      flags |= PTE_COW;
+    }
+    else {
+      *pte &= ~PTE_COW;
+      flags &= ~PTE_COW;
+    }
     flags &= ~PTE_W; // new line
 
     //if((mem = kalloc()) == 0)
@@ -324,6 +335,9 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     }
     *pte &= ~PTE_W; // new line
     // increase reference count by 1
+    acquire(&ref_arr.lock);
+    ref_arr.reference_count[pa/PGSIZE] += 1;
+    release(&ref_arr.lock);
   }
   return 0;
 

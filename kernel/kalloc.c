@@ -18,6 +18,9 @@ struct run {
   struct run *next;
 };
 
+// struct holding reference count per page
+struct ref_arr_type ref_arr;
+
 struct {
   struct spinlock lock;
   struct run *freelist;
@@ -26,6 +29,7 @@ struct {
 void
 kinit()
 {
+  initlock(&ref_arr.lock, "ref_arr"); // added this here so the reference count lock is initialised early
   initlock(&kmem.lock, "kmem");
   freerange(end, (void*)PHYSTOP);
 }
@@ -50,6 +54,14 @@ kfree(void *pa)
 
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
+
+  acquire(&ref_arr.lock);
+  ref_arr.reference_count[((uint64) pa)/PGSIZE]--;
+  if (ref_arr.reference_count[((uint64) pa)/PGSIZE] > 0) {
+    release(&ref_arr.lock);
+    return;
+  }
+  release(&ref_arr.lock);
 
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
@@ -78,5 +90,10 @@ kalloc(void)
 
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
+  
+  acquire(&ref_arr.lock);
+  ref_arr.reference_count[((uint64) r)/PGSIZE] = 1;
+  release(&ref_arr.lock);
+
   return (void*)r;
 }

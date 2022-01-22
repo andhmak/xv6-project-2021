@@ -1,3 +1,5 @@
+#pragma once // new code, to declare the lock of the reference count in defs.h by including spinlock.h there
+
 // Physical memory layout
 
 // qemu -machine virt is set up like this,
