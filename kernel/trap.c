@@ -105,7 +105,7 @@ usertrap(void)
             flags &= ~PTE_COW;
             flags |= PTE_W;
             uvmunmap(p->pagetable, PGROUNDDOWN(r_stval()), 1, 1);
-            if(mappages(p->pagetable, PGROUNDDOWN(r_stval()), PGSIZE, (uint64)mem, flags) != 0){ // changes mem->pa
+            if(mappages(p->pagetable, PGROUNDDOWN(r_stval()), PGSIZE, (uint64)mem, flags) != 0){
               printf("usertrap: rcause == 15: couldn't map new page\n");
               kfree(mem);
               p->killed = 1;
