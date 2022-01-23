@@ -78,11 +78,15 @@ usertrap(void)
       uint64 pa = PTE2PA(*pte);
       uint flags = PTE_FLAGS(*pte);
       if ((flags & PTE_COW) == 0) {
-        printf("usertrap(): rcause == 15: tried to write on read-only page\n");
+        printf("usertrap(): rcause == 15: tried to write on read-only page, pid=%d\n", p->pid);
         p->killed = 1;
       }
       else if((flags & PTE_V) == 0) {
         printf("usertrap: rcause == 15: page not present\n");
+        p->killed = 1;
+      }
+      else if((flags & PTE_U) == 0) {
+        printf("usertrap: rcause == 15: not user page\n");
         p->killed = 1;
       }
       else {
