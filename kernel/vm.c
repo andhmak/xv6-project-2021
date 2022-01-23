@@ -329,7 +329,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     //if((mem = kalloc()) == 0)
     //  goto err;
     //memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){ // changes mem->pa
+    if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){ // changed mem->pa
       //kfree(mem);
       goto err;
     }

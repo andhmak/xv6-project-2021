@@ -195,3 +195,5 @@ struct ref_arr_type {
   struct spinlock lock;
   int reference_count[PHYSTOP/PGSIZE];
 };
+
+pte_t *walk(pagetable_t pagetable, uint64 va, int alloc);

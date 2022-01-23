@@ -29,6 +29,9 @@ trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
+// to use the reference array
+extern struct ref_arr_type ref_arr;
+
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
@@ -65,10 +68,45 @@ usertrap(void)
     intr_on();
 
     syscall();
-  } /*else if (r_scause() == 15){
+  } else if (r_scause() == 15){
+    pte_t *pte = walk(p->pagetable, PGROUNDDOWN(r_stval()), 0);
+    if (pte == 0) {
+      printf("usertrap(): rcause == 15: pte doesn't exist");
+      p->killed = 1;
+    }
+    else {
+      uint64 pa = PTE2PA(*pte);
+      uint flags = PTE_FLAGS(*pte);
+      if ((flags & PTE_COW) == 0) {
+        printf("usertrap(): rcause == 15: tried to write on read-only page\n");
+        p->killed = 1;
+      }
+      else if((flags & PTE_V) == 0) {
+        printf("usertrap: rcause == 15: page not present\n");
+        p->killed = 1;
+      }
+      else {
+        char *mem;
+        if((mem = kalloc()) == 0) {
+          printf("usertrap: rcause == 15: CoW but couldn't allocate new page\n");
+          p->killed = 1;
+        }
+        else {
+          memmove(mem, (char*)pa, PGSIZE);
+          flags &= ~PTE_COW;
+          flags |= PTE_W;
+          uvmunmap(p->pagetable, PGROUNDDOWN(r_stval()), 1, 1);
+          if(mappages(p->pagetable, PGROUNDDOWN(r_stval()), PGSIZE, (uint64)mem, flags) != 0){ // changes mem->pa
+            printf("usertrap: rcause == 15: couldn't map new page\n");
+            kfree(mem);
+            p->killed = 1;
+          }
+        }
+      }
+    }
     // cow fault handler, check if page is user, valid, read only, cow, then call kalloc, copy old page to new page,
     // in the end decrease the reference count by 1
-  }*/ else if((which_dev = devintr()) != 0){
+  } else if((which_dev = devintr()) != 0){
     // ok
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
