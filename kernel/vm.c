@@ -369,9 +369,41 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
-    pa0 = walkaddr(pagetable, va0);
-    if(pa0 == 0)
+    if (va0 >= MAXVA) {
+      printf("copyout(): invalid dstva\n");
       return -1;
+    }
+    pte_t *pte = walk(pagetable, va0, 0);
+    if (pte == 0) {
+      printf("copyout(): pte doesn't exist\n");
+      return -1;
+    }
+    pa0 = PTE2PA(*pte);
+    if(pa0 == 0) {
+      printf("copyout(): invalid pa\n");
+      return -1;
+    }
+    uint flags = PTE_FLAGS(*pte);
+    if ((!(flags & PTE_W)) && (flags & PTE_COW)) {
+      char *mem;
+      if((mem = kalloc()) == 0) {
+        printf("copyout: CoW and couldn't allocate new page\n");
+        return -1;
+      }
+      else {
+        memmove(mem, (char*)pa0, PGSIZE);
+        flags &= ~PTE_COW;
+        flags |= PTE_W;
+        uvmunmap(pagetable, va0, 1, 1);
+        if(mappages(pagetable, va0, PGSIZE, (uint64)mem, flags) != 0){
+          printf("copyout: CoW and couldn't map new page\n");
+          kfree(mem);
+          return -1;
+        }
+      }
+      pa0 = (uint64)mem;
+    }
+    //pa0 = walkaddr(pagetable, va0);
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
