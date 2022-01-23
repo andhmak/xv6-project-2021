@@ -69,41 +69,47 @@ usertrap(void)
 
     syscall();
   } else if (r_scause() == 15){
-    pte_t *pte = walk(p->pagetable, PGROUNDDOWN(r_stval()), 0);
-    if (pte == 0) {
-      printf("usertrap(): rcause == 15: pte doesn't exist");
+    if ((r_stval() >= MAXVA) || (r_stval() < 0)) {
+      printf("usertrap(): rcause == 15: invalid stval\n");
       p->killed = 1;
     }
     else {
-      uint64 pa = PTE2PA(*pte);
-      uint flags = PTE_FLAGS(*pte);
-      if ((flags & PTE_COW) == 0) {
-        printf("usertrap(): rcause == 15: tried to write on read-only page, pid=%d\n", p->pid);
-        p->killed = 1;
-      }
-      else if((flags & PTE_V) == 0) {
-        printf("usertrap: rcause == 15: page not present\n");
-        p->killed = 1;
-      }
-      else if((flags & PTE_U) == 0) {
-        printf("usertrap: rcause == 15: not user page\n");
+      pte_t *pte = walk(p->pagetable, PGROUNDDOWN(r_stval()), 0);
+      if (pte == 0) {
+        printf("usertrap(): rcause == 15: pte doesn't exist\n");
         p->killed = 1;
       }
       else {
-        char *mem;
-        if((mem = kalloc()) == 0) {
-          printf("usertrap: rcause == 15: CoW but couldn't allocate new page\n");
+        uint64 pa = PTE2PA(*pte);
+        uint flags = PTE_FLAGS(*pte);
+        if ((flags & PTE_COW) == 0) {
+          printf("usertrap(): rcause == 15: tried to write on read-only page, pid=%d\n", p->pid);
+          p->killed = 1;
+        }
+        else if((flags & PTE_V) == 0) {
+          printf("usertrap: rcause == 15: page not present\n");
+          p->killed = 1;
+        }
+        else if((flags & PTE_U) == 0) {
+          printf("usertrap: rcause == 15: not user page\n");
           p->killed = 1;
         }
         else {
-          memmove(mem, (char*)pa, PGSIZE);
-          flags &= ~PTE_COW;
-          flags |= PTE_W;
-          uvmunmap(p->pagetable, PGROUNDDOWN(r_stval()), 1, 1);
-          if(mappages(p->pagetable, PGROUNDDOWN(r_stval()), PGSIZE, (uint64)mem, flags) != 0){ // changes mem->pa
-            printf("usertrap: rcause == 15: couldn't map new page\n");
-            kfree(mem);
+          char *mem;
+          if((mem = kalloc()) == 0) {
+            printf("usertrap: rcause == 15: CoW but couldn't allocate new page\n");
             p->killed = 1;
+          }
+          else {
+            memmove(mem, (char*)pa, PGSIZE);
+            flags &= ~PTE_COW;
+            flags |= PTE_W;
+            uvmunmap(p->pagetable, PGROUNDDOWN(r_stval()), 1, 1);
+            if(mappages(p->pagetable, PGROUNDDOWN(r_stval()), PGSIZE, (uint64)mem, flags) != 0){ // changes mem->pa
+              printf("usertrap: rcause == 15: couldn't map new page\n");
+              kfree(mem);
+              p->killed = 1;
+            }
           }
         }
       }
