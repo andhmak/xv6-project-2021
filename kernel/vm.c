@@ -320,10 +320,6 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       *pte |= PTE_COW;
       flags |= PTE_COW;
     }
-    else {
-      *pte &= ~PTE_COW;
-      flags &= ~PTE_COW;
-    }
     flags &= ~PTE_W; // new line
 
     //if((mem = kalloc()) == 0)
