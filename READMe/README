@@ -1,0 +1,17 @@
+Τα cowtest, usertests περνάνε, αλλά στο μηχάνημά μου το make grade κάνει timeout, άρα υπάρχει μια πιθανότητα να το κάνει και σε μηχάνημα της σχολής.
+
+Έχουν τροποποιηθεί τα εξής αρχεία:
+
+defs.h:
+
+spinlock.h:
+
+memlayout.h:
+
+riscv.h:
+
+kalloc.c:
+
+vm.c:
+
+trap.c:
