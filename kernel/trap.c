@@ -29,9 +29,6 @@ trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
-// to use the reference array
-extern struct ref_arr_type ref_arr;
-
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
@@ -68,13 +65,15 @@ usertrap(void)
     intr_on();
 
     syscall();
-  } else if (r_scause() == 15){
+  } else if (r_scause() == 15){ // extra case for CoW
+    // checking if stval is valid, if not kill the process
     if ((r_stval() >= MAXVA) || (r_stval() < 0)) {
       printf("usertrap(): rcause == 15: invalid stval\n");
       p->killed = 1;
     }
     else {
       pte_t *pte = walk(p->pagetable, PGROUNDDOWN(r_stval()), 0);
+      // checking if pte exists, if not kill the process
       if (pte == 0) {
         printf("usertrap(): rcause == 15: pte doesn't exist\n");
         p->killed = 1;
@@ -82,29 +81,36 @@ usertrap(void)
       else {
         uint64 pa = PTE2PA(*pte);
         uint flags = PTE_FLAGS(*pte);
+        // checking if page is CoW or "naturally" read-only, if not CoW kill the process
         if ((flags & PTE_COW) == 0) {
           printf("usertrap(): rcause == 15: tried to write on read-only page, pid=%d\n", p->pid);
           p->killed = 1;
         }
+        // checking if page is valid, if not kill the process
         else if((flags & PTE_V) == 0) {
           printf("usertrap: rcause == 15: page not present\n");
           p->killed = 1;
         }
+        // checking if page is user, if not kill the process
         else if((flags & PTE_U) == 0) {
           printf("usertrap: rcause == 15: not user page\n");
           p->killed = 1;
         }
+        // make a new writable page and map it in place of the old one
         else {
           char *mem;
+          // allocate page if possible
           if((mem = kalloc()) == 0) {
             printf("usertrap: rcause == 15: CoW but couldn't allocate new page\n");
             p->killed = 1;
           }
+          // in the case it is possible, replace the old one
           else {
             memmove(mem, (char*)pa, PGSIZE);
             flags &= ~PTE_COW;
             flags |= PTE_W;
             uvmunmap(p->pagetable, PGROUNDDOWN(r_stval()), 1, 1);
+            // free new page if it cannot be mapped and kill the process
             if(mappages(p->pagetable, PGROUNDDOWN(r_stval()), PGSIZE, (uint64)mem, flags) != 0){
               printf("usertrap: rcause == 15: couldn't map new page\n");
               kfree(mem);

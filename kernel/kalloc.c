@@ -29,7 +29,7 @@ struct {
 void
 kinit()
 {
-  initlock(&ref_arr.lock, "ref_arr"); // added this here so the reference count lock is initialised early
+  initlock(&ref_arr.lock, "ref_arr"); // this is here so the reference count lock is initialised early
   initlock(&kmem.lock, "kmem");
   freerange(end, (void*)PHYSTOP);
 }

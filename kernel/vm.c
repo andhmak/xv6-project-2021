@@ -291,7 +291,7 @@ uvmfree(pagetable_t pagetable, uint64 sz)
   freewalk(pagetable);
 }
 
-// to use the reference array
+// to use the reference array defined in kalloc.c
 extern struct ref_arr_type ref_arr;
 
 // Given a parent process's page table, copy
@@ -369,6 +369,8 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
+
+    // simulating usertrap in copyout
     if (va0 >= MAXVA) {
       printf("copyout(): invalid dstva\n");
       return -1;
@@ -403,7 +405,7 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
       }
       pa0 = (uint64)mem;
     }
-    //pa0 = walkaddr(pagetable, va0);
+    
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
