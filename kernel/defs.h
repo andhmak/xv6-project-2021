@@ -186,10 +186,11 @@ void            virtio_disk_intr(void);
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
 
 
-// new code
+// extra definitions for interoperability for the CoW implementation
 
 #include "spinlock.h"
 #include "memlayout.h"
+
 // struct holding reference count per page
 struct ref_arr_type {
   struct spinlock lock;

@@ -316,21 +316,25 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
 
+    // CoW only for writable pages, "naturally" read-only pages shouldn't be copied and written on
     if ((flags & PTE_W) || (flags & PTE_COW)) {
       *pte |= PTE_COW;
       flags |= PTE_COW;
     }
-    flags &= ~PTE_W; // new line
 
-    //if((mem = kalloc()) == 0)
-    //  goto err;
-    //memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){ // changed mem->pa
+    // make the new page read-only
+    flags &= ~PTE_W;
+
+    // create new page entry showing the same physical address
+    if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){
       //kfree(mem);
       goto err;
     }
-    *pte &= ~PTE_W; // new line
-    // increase reference count by 1
+
+    // make the old page read-only
+    *pte &= ~PTE_W;
+
+    // increase reference count of the page by 1
     acquire(&ref_arr.lock);
     ref_arr.reference_count[pa/PGSIZE] += 1;
     release(&ref_arr.lock);
